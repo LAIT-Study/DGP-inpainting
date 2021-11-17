@@ -1,6 +1,6 @@
 import torch
 import torch.multiprocessing as mp
-
+import os
 import utils
 from trainer import Trainer
 from utils import dist_init

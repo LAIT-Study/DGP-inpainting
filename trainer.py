@@ -12,7 +12,6 @@ import models
 import utils
 from dataset import ImageDataset
 
-
 class Trainer(object):
 
     def __init__(self, config):
@@ -87,7 +86,7 @@ class Trainer(object):
         dtime_rec = utils.AverageMeter()
         recorder = {}
         end = time.time()
-        for i, (image, category, img_path) in enumerate(self.train_loader):
+        for i, (image, category, img_path, img_mask) in enumerate(self.train_loader):
             # measure data loading time
             dtime_rec.update(time.time() - end)
 
@@ -96,11 +95,13 @@ class Trainer(object):
             image = image.cuda()
             category = category.cuda()
             img_path = img_path[0]
-
+            
+            img_mask = img_mask.cuda()
+            img_mask = 1 - img_mask
             self.model.reset_G()
-            self.model.set_target(image, category, img_path)
+            self.model.set_target(image, category, img_path, img_mask)
             # when category is unkonwn (category=-1), it would be selected from samples
-            self.model.select_z(select_y=True if category.item() < 0 else False)
+            self.model.select_z(select_y=True if category.item() < 0 else False,  img_mask=img_mask)
             loss_dict = self.model.run(save_interval=self.config['save_interval'])
 
             # average loss if distributed
@@ -125,7 +126,7 @@ class Trainer(object):
                 for k in recorder.keys():
                     if self.tb_logger is not None:
                         self.tb_logger.add_scalar('train_{}'.format(k),
-                                                  recorder[k].avg, i + 1)
+                                                recorder[k].avg, i + 1)
                     loss_str += '{}: {loss.val:.4g} ({loss.avg:.4g})  '.format(
                         k, loss=recorder[k])
 
@@ -143,14 +144,18 @@ class Trainer(object):
         recorder = {}
         last_category = -1
         end = time.time()
-        for i, (image, category, img_path) in enumerate(self.train_loader):
+        for i, (image, category, img_path, img_mask) in enumerate(self.train_loader):
             # measure data loading time
             dtime_rec.update(time.time() - end)
 
             assert image.shape[0] > 0
             image = image.cuda()
+            img_mask = img_mask.cuda()
             category = category.cuda()
             img_path = img_path[0]
+
+            # Mask가 흰색이기 때문에 검정색으로 바꿔준다. 
+            img_mask = 1 - img_mask
 
             self.model.reset_G()
             self.model.set_target(image, category, img_path)

@@ -418,7 +418,7 @@ def name_from_config(config):
 
 # Get GPU memory, -i is the index
 def query_gpu(indices):
-    os.system('nvidia-smi -i 0 --query-gpu=memory.free --format=csv')
+    os.system('nvidia-smi -i 1 --query-gpu=memory.free --format=csv')
 
 
 # Convenience function to count the number of parameters in a module

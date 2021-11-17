@@ -1,6 +1,3 @@
-window1.jpg
-window2.jpg
-window3.jpeg
-library1.jpg
-library2.jpeg
-stones.jpg
+images_252.png
+images_291.png
+images_299.png

@@ -41,20 +41,26 @@ class ImageDataset(data.Dataset):
         self.root_dir = root_dir
         if transform is not None:
             self.transform = transform
+            
         else:
             norm_mean = [0.5, 0.5, 0.5]
             norm_std = [0.5, 0.5, 0.5]
             if normalize:
                 self.transform = transforms.Compose([
                     utils.CenterCropLongEdge(),
-                    transforms.Resize(image_size),
+                    transforms.Resize(image_size, interpolation=0),
                     transforms.ToTensor(),
                     transforms.Normalize(norm_mean, norm_std)
+                ])
+                self.mask_transform = transforms.Compose([
+                    utils.CenterCropLongEdge(),
+                    transforms.Resize(image_size, interpolation=0),
+                    transforms.ToTensor()
                 ])
             else:
                 self.transform = transforms.Compose([
                     utils.CenterCropLongEdge(),
-                    transforms.Resize(image_size),
+                    transforms.Resize(image_size, interpolation=0),
                     transforms.ToTensor()
                 ])
         with open(meta_file) as f:
@@ -75,12 +81,15 @@ class ImageDataset(data.Dataset):
         return self.num
 
     def __getitem__(self, idx):
-        filename = self.root_dir + '/' + self.metas[idx][0]
+        filename = self.root_dir + '/'+ 'image' + '/' +  self.metas[idx][0]
+        mask_filename = self.root_dir + '/' + 'mask' + '/' + self.metas[idx][0]
         cls = self.metas[idx][1]
         img = default_loader(filename)
+        mask_img = default_loader(mask_filename)
 
         # transform
         if self.transform is not None:
             img = self.transform(img)
+            mask_img = self.mask_transform(mask_img)
 
-        return img, cls, self.metas[idx][0]
+        return img, cls, self.metas[idx][0], mask_img

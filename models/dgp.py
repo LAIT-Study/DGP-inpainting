@@ -112,12 +112,13 @@ class DGP(object):
     def random_G(self):
         self.G.init_weights()
 
-    def set_target(self, target, category, img_path):
+    def set_target(self, target, category, img_path, img_mask):
         self.target_origin = target
         # apply degradation transform to the original image
-        self.target = self.pre_process(target, True)
+        self.target = self.pre_process(target, True, img_mask)
         self.y.fill_(category.item())
         self.img_name = img_path[img_path.rfind('/') + 1:img_path.rfind('.')]
+        self.img_mask = img_mask
 
     def run(self, save_interval=None):
         save_imgs = self.target.clone()
@@ -141,7 +142,7 @@ class DGP(object):
                     self.G.optim.zero_grad()
                 x = self.G(self.z, self.G.shared(self.y), use_in=self.use_in[stage])
                 # apply degradation transform
-                x_map = self.pre_process(x, False)
+                x_map = self.pre_process(x, False, self.img_mask)
 
                 # calculate losses in the degradation space
                 ftr_loss = self.criterion(self.ftr_net, x_map, self.target)
@@ -171,8 +172,10 @@ class DGP(object):
                 # calculate losses in the non-degradation space
                 if self.mode in ['reconstruct', 'colorization', 'SR', 'inpainting']:
                     # x2 is to get the post-processed result in colorization
-                    metrics, x2 = self.get_metrics(x)
-                    loss_dict = {**loss_dict, **metrics}
+                    
+                    # get Metrics return 수정 
+                    x2 = self.get_metrics(x)
+                    loss_dict = {**loss_dict}
 
                 if i == 0 or (i + 1) % self.config['print_interval'] == 0:
                     if self.rank == 0:
@@ -187,8 +190,7 @@ class DGP(object):
                         save_imgs.float(),
                         '%s/images_sheet/%s_%s.jpg' %
                         (self.config['exp_path'], self.img_name, self.mode),
-                        nrow=int(save_imgs.size(0)**0.5),
-                        normalize=True)
+                        nrow=int(save_imgs.size(0)**0.5), normalize=True)
                     if self.mode == 'colorization':
                         save_imgs2 = torch.cat((save_imgs2, x2), dim=0)
                         torchvision.utils.save_image(
@@ -242,7 +244,7 @@ class DGP(object):
                 (self.config['exp_path'], self.img_name, self.mode))
         return loss_dict
 
-    def select_z(self, select_y=False):
+    def select_z(self, select_y=False, img_mask=None):
         with torch.no_grad():
             if self.select_num == 0:
                 self.z.zero_()
@@ -262,7 +264,7 @@ class DGP(object):
                     self.y.random_(0, self.config['n_classes'])
                     y_all.append(self.y.cpu())
                 x = self.G(self.z, self.G.shared(self.y))
-                x = self.pre_process(x)
+                x = self.pre_process(x, mask_img = img_mask)
                 ftr_loss = self.criterion(self.ftr_net, x, self.target)
                 loss_all.append(ftr_loss.view(1).cpu())
                 if self.rank == 0 and (i + 1) % 100 == 0:
@@ -274,7 +276,7 @@ class DGP(object):
                 self.y.copy_(y_all[idx])
             self.criterion.set_ftr_num(self.ftr_num[0])
 
-    def pre_process(self, image, target=True):
+    def pre_process(self, image, target=True, mask_img = None):
         if self.mode in ['SR', 'hybrid']:
             # apply downsampling, this part is the same as deep image prior
             if target:
@@ -292,7 +294,7 @@ class DGP(object):
                 image = image * 2 - 1
             # interpolate to the orginal resolution via bilinear interpolation
             image = F.interpolate(
-                image, scale_factor=self.factor, mode='bilinear')
+                image, scale_factor=self.factor, mode='nearest')
         n, _, h, w = image.size()
         if self.mode in ['colorization', 'hybrid']:
             # transform the image to gray-scale
@@ -303,13 +305,14 @@ class DGP(object):
             image = gray.view(n, 1, h, w).expand(n, 3, h, w)
         if self.mode in ['inpainting', 'hybrid']:
             # remove the center part of the image
-            hole = min(h, w) // 3
+            '''hole = min(h, w) // 3
             begin = (h - hole) // 2
             end = h - begin
             self.begin, self.end = begin, end
             mask = torch.ones(1, 1, h, w).cuda()
             mask[0, 0, begin:end, begin:end].zero_()
-            image = image * mask
+            image = image * mask'''
+            image = mask_img * image
         return image
 
     def get_metrics(self, x):
@@ -335,14 +338,15 @@ class DGP(object):
                 x = x.unsqueeze(0)
             elif self.mode == 'inpainting':
                 # only use the inpainted area to calculate ssim and psnr
-                x_np = x_np[self.begin:self.end, self.begin:self.end, :]
+             '''   x_np = x_np[self.begin:self.end, self.begin:self.end, :]
                 target_np = target_np[self.begin:self.end,
                                       self.begin:self.end, :]
-            ssim = compare_ssim(target_np, x_np, multichannel=True)
+           ssim = compare_ssim(target_np, x_np, multichannel=True)
             psnr = compare_psnr(target_np, x_np)
             metrics['psnr'] = torch.Tensor([psnr]).cuda()
-            metrics['ssim'] = torch.Tensor([ssim]).cuda()
-            return metrics, x
+            metrics['ssim'] = torch.Tensor([ssim]).cuda()'''
+            #return metrics, x
+            return x
 
     def jitter(self, x):
         save_imgs = x.clone().cpu()
