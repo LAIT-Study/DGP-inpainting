@@ -1,4 +1,35 @@
-## Deep Generative Prior (DGP)
+## Deep Generative Prior (DGP) in Inpainting
+
+pretrained 모델 집어넣는 법
+- `pretrained/` 폴더에 모델 삽입 (pth 파일)
+
+파라미터 수정 하는 법
+- `experiments/run_inpainting_list.sh` 파일 내부에 세팅 값들을 변경한다.
+
+모델 실행 하는 법
+- `sh experiments/run_inpainting_list.sh`
+
+image 테스트 하는 법
+두 입력 이미지가 필요하다. (1. 마스크 이미지(흑백) / 2. 마스크가 적용된 그림 이미지)
+- `data/others/image/` 에 이미지를 넣는다.
+- `data/others/mask/` 에 위 이미지에 해당하는 마스크 이미지를 넣는다.
+
+마스크와 마스크된 이미지는 이름명을 **같게** 해준다.
+
+그리고 `data/others` 폴더에 있는 `list.txt`에서 넣은 이미지명을 넣어준다. 
+
+(ex. images_252.png
+images_291.png
+images_299.png)
+
+
+
+
+
+
+--- 
+original README >>>
+
 
 ### Paper
 
