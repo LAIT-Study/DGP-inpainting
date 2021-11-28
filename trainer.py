@@ -86,7 +86,7 @@ class Trainer(object):
         dtime_rec = utils.AverageMeter()
         recorder = {}
         end = time.time()
-        for i, (image, category, img_path, img_mask) in enumerate(self.train_loader):
+        for i, (image, category, img_path, img_mask, sobel_img) in enumerate(self.train_loader):
             # measure data loading time
             dtime_rec.update(time.time() - end)
 
@@ -98,6 +98,11 @@ class Trainer(object):
             
             img_mask = img_mask.cuda()
             img_mask = 1 - img_mask
+
+            sobel_img = sobel_img.cuda()
+
+            assert sobel_img.shape[1] == 1, 'this sobel image is not gray scale'
+            print('sobel', sobel_img.shape)
             self.model.reset_G()
             self.model.set_target(image, category, img_path, img_mask)
             # when category is unkonwn (category=-1), it would be selected from samples
