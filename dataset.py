@@ -57,6 +57,12 @@ class ImageDataset(data.Dataset):
                     transforms.Resize(image_size, interpolation=0),
                     transforms.ToTensor()
                 ])
+                self.sobel_transform = transforms.Compose([
+                    utils.CenterCropLongEdge(),
+                    transforms.Resize(image_size, interpolation=0),
+                    transforms.ToTensor(),
+                    transforms.Grayscale(1)
+                ])
             else:
                 self.transform = transforms.Compose([
                     utils.CenterCropLongEdge(),
@@ -81,15 +87,19 @@ class ImageDataset(data.Dataset):
         return self.num
 
     def __getitem__(self, idx):
-        filename = self.root_dir + '/'+ 'image' + '/' +  self.metas[idx][0]
-        mask_filename = self.root_dir + '/' + 'mask' + '/' + self.metas[idx][0]
+        filename = self.root_dir + '/'+ 'image' + '/' +  self.metas[idx][0] + '.png'
+        mask_filename = self.root_dir + '/' + 'mask' + '/' + self.metas[idx][0] + '.png'
+        sobel_filename = self.root_dir + '/' + '1_edges_sobel' + '/' + self.metas[idx][0] + '_merged' + '.png'
+
         cls = self.metas[idx][1]
         img = default_loader(filename)
         mask_img = default_loader(mask_filename)
+        sobel_img = default_loader(sobel_filename)
 
         # transform
         if self.transform is not None:
             img = self.transform(img)
             mask_img = self.mask_transform(mask_img)
+            sobel_img = self.sobel_transform(sobel_img)
 
-        return img, cls, self.metas[idx][0], mask_img
+        return img, cls, self.metas[idx][0], mask_img, sobel_img
