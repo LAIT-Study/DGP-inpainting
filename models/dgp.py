@@ -129,6 +129,7 @@ class DGP(object):
         loss_dict = {}
         curr_step = 0
         count = 0
+        vgg_perceptual_loss = utils.losses.VGGPerceptualLoss(resize=True).cuda()
         for stage, iteration in enumerate(self.iterations):
             # setup the number of features to use in discriminator
             self.criterion.set_ftr_num(self.ftr_num[stage])
@@ -150,11 +151,15 @@ class DGP(object):
 
                 
                 # return image_x, 
-                img_x = sobel_filter(x, 'dgp_sobel').cuda()
-                edge_c = sobel_filter(self.sobel_img, 'edge_connect_sobel').cuda()
+                img_x = sobel_filter(x, 'dgp_sobel')
+                edge_c = sobel_filter(self.sobel_img, 'edge_connect_sobel')
 
+                img_x = img_x.cuda() # .cuda() should be added 
+                edge_c = edge_c.cuda() # .cuda() should be added
 
-
+                # VGGPerceptualLoss
+                perceptual_edge_loss = vgg_perceptual_loss.forward(img_x, edge_c) # Perceptual Loss (by Haneol Lee)
+                
                 # calculate losses in the degradation space
                 ftr_loss = self.criterion(self.ftr_net, x_map, self.target)
                 mse_loss = self.mse(x_map, self.target)
@@ -164,7 +169,8 @@ class DGP(object):
                 l1_loss = F.l1_loss(x_map, self.target)
                 loss = ftr_loss * self.config['w_D_loss'][stage] + \
                     mse_loss * self.config['w_mse'][stage] + \
-                    nll * self.config['w_nll']
+                    nll * self.config['w_nll'] + \
+                    perceptual_edge_loss * self.config['w_perceptual_edge']
                 loss.backward()
 
                 self.z_optim.step()
@@ -177,7 +183,8 @@ class DGP(object):
                     'ftr_loss': ftr_loss,
                     'nll': nll,
                     'mse_loss': mse_loss / 4,
-                    'l1_loss': l1_loss / 2
+                    'l1_loss': l1_loss / 2,
+                    'perceptual_edge_loss' : perceptual_edge_loss # Lee
                 }
 
                 # calculate losses in the non-degradation space
