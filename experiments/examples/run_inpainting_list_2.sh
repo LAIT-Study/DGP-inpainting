@@ -3,7 +3,7 @@
 WORK_PATH=$(dirname $0)
 
 CUDA_VISIBLE_DEVICES=2 python -u -W ignore main.py \
---exp_path $WORK_PATH/2 \
+--exp_path $WORK_PATH/CF_2_1e-2 \
 --root_dir data/others \
 --list_file data/others/list.txt \
 --seed 2 \
@@ -16,6 +16,7 @@ CUDA_VISIBLE_DEVICES=2 python -u -W ignore main.py \
 --w_D_loss 1 1 1 1 0.5 \
 --w_nll 0.02 \
 --w_mse 1 1 1 1 10 \
+--w_perceptual_edge 0.01 0.01 0.01 0.01 0.01 \
 --select_num 1000 \
 --sample_std 0.3 \
 --iterations 2000 2000 2000 2000 2000 \
