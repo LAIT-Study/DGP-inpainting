@@ -3,17 +3,19 @@ from copy import deepcopy
 
 import numpy as np
 import torch
+from torch._C import device
 import torch.distributed as dist
 import torch.nn.functional as F
 import torchvision
 from PIL import Image
 from skimage import color
-from skimage.measure import compare_psnr, compare_ssim
+
 from torch.autograd import Variable
 
 import models
 import utils
 from models.downsampler import Downsampler
+from models.edge import *
 
 
 class DGP(object):
@@ -112,13 +114,14 @@ class DGP(object):
     def random_G(self):
         self.G.init_weights()
 
-    def set_target(self, target, category, img_path, img_mask):
+    def set_target(self, target, category, img_path, img_mask, sobel_img):
         self.target_origin = target
         # apply degradation transform to the original image
         self.target = self.pre_process(target, True, img_mask)
         self.y.fill_(category.item())
         self.img_name = img_path[img_path.rfind('/') + 1:img_path.rfind('.')]
         self.img_mask = img_mask
+        self.sobel_img = sobel_img
 
     def run(self, save_interval=None):
         save_imgs = self.target.clone()
@@ -137,12 +140,20 @@ class DGP(object):
                                         self.ft_num[stage], self.lr_ratio[stage])
                 self.z_scheduler.update(curr_step, self.z_lrs[stage])
 
+
                 self.z_optim.zero_grad()
                 if self.update_G:
                     self.G.optim.zero_grad()
                 x = self.G(self.z, self.G.shared(self.y), use_in=self.use_in[stage])
                 # apply degradation transform
                 x_map = self.pre_process(x, False, self.img_mask)
+
+                
+                # return image_x, 
+                img_x = sobel_filter(x, 'dgp_sobel').cuda()
+                edge_c = sobel_filter(self.sobel_img, 'edge_connect_sobel').cuda()
+
+
 
                 # calculate losses in the degradation space
                 ftr_loss = self.criterion(self.ftr_net, x_map, self.target)

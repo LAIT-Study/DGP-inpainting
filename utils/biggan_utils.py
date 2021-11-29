@@ -112,7 +112,10 @@ def prepare_parser():
         '--skip_init', action='store_true', default=False,
         help='Skip initialization, ideal for testing when ortho init was used '
              '(default: %(default)s)')
-    
+    parser.add_argument(
+        '--postprocessing', action='store_true', default=False,
+        help='Postprocessing... '
+             '(default: %(default)s)')
     ### Optimizer stuff ###
     parser.add_argument(
         '--optimizer', type=str, default='Adam',
