@@ -91,7 +91,14 @@ class ImageDataset(data.Dataset):
     def __getitem__(self, idx):
         filename = self.root_dir + '/'+ 'image' + '/' +  self.metas[idx][0] + '.png'
         mask_filename = self.root_dir + '/' + 'mask' + '/' + self.metas[idx][0] + '.png'
-        sobel_filename = self.root_dir + '/' + '3_inpainted_outputs' + '/' + self.metas[idx][0] + '_merged' + '.png'
+
+        # # crfill
+        # sobel_filename = self.root_dir + '/' + '4_inpainted_crfill' + '/' + self.metas[idx][0] + '.png'
+        # 4_inpainted_outputs
+        # /home/haneollee/dgm3/DGP-inpainting/data/others/
+
+        # edge-connect
+        sobel_filename = self.root_dir + '/' + '3_inpainted_outputs_EC' + '/' + self.metas[idx][0] + '_merged' + '.png'
 
         cls = self.metas[idx][1]
         img = default_loader(filename)

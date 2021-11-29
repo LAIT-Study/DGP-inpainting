@@ -150,7 +150,8 @@ class DGP(object):
                 # apply degradation transform
                 x_map = self.pre_process(x, False, self.img_mask)
 
-                
+                # x_numpy = x.detach().cpu().numpy() #$ Lee
+
                 # return image_x, 
                 img_x = sobel_filter(x, 'dgp_sobel')
                 edge_c = sobel_filter(self.sobel_img, 'edge_connect_sobel')
@@ -168,10 +169,14 @@ class DGP(object):
                 nll = self.z**2 / 2
                 nll = nll.mean()
                 l1_loss = F.l1_loss(x_map, self.target)
+
+                w_perceptual_edge = self.config['w_perceptual_edge'][stage]
+
                 loss = ftr_loss * self.config['w_D_loss'][stage] + \
                     mse_loss * self.config['w_mse'][stage] + \
                     nll * self.config['w_nll'] + \
-                    perceptual_edge_loss * self.config['w_perceptual_edge']
+                    perceptual_edge_loss * w_perceptual_edge #  * self.config['w_perceptual_edge'][stage]
+
                 loss.backward()
 
                 self.z_optim.step()
@@ -185,7 +190,7 @@ class DGP(object):
                     'nll': nll,
                     'mse_loss': mse_loss / 4,
                     'l1_loss': l1_loss / 2,
-                    'perceptual_edge_loss' : perceptual_edge_loss * self.config['w_perceptual_edge'] # Lee
+                    'perceptual_edge_loss' : perceptual_edge_loss * w_perceptual_edge # Lee
                 }
 
                 # calculate losses in the non-degradation space

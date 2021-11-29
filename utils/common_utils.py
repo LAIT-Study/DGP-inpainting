@@ -75,6 +75,9 @@ def add_dgp_parser(parser):
         '--w_mse', type=float, default=[0.1], nargs='+',
         help='MSE loss weight (default: %(default)s)')
     parser.add_argument(
+        '--w_perceptual_edge', type=float, default=0.001, nargs='+', # Lee
+        help='weight of perceptual_edge_loss (default: %(default)s)')
+    parser.add_argument(
         '--select_num', type=int, default=500,
         help='Number of image pool to select from (default: %(default)s)')
     parser.add_argument(
