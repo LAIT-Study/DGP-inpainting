@@ -44,7 +44,7 @@ def sobel_filter(img, file_name):
     img_sobel = cv2.addWeighted(img_sobel_x, 1, img_sobel_y, 1, 0)
     img_sobel_norm = img_sobel / 255.0
 
-    img_sobel_norm = torch.from_numpy(img_sobel_norm)
+    img_sobel_norm = torch.Tensor(img_sobel_norm) # torch.from_numpy
     img_sobel_norm = img_sobel_norm.unsqueeze(0).expand(1, 3, img_sobel_norm.shape[-1], img_sobel_norm.shape[-1])
     
     assert img_sobel_norm.shape[1] == 3, 'channel is not 3 for rgb space'

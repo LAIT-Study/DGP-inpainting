@@ -2,7 +2,7 @@
 
 WORK_PATH=$(dirname $0)
 
-CUDA_VISIBLE_DEVICES=7 python -u -W ignore main.py \
+CUDA_VISIBLE_DEVICES=0,1,2 python -u -W ignore main.py \
 --exp_path $WORK_PATH \
 --root_dir data/others \
 --list_file data/others/list.txt \
