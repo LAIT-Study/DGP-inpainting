@@ -38,6 +38,7 @@ class DGP(object):
         self.use_in = config['use_in']
         self.select_num = config['select_num']
         self.factor = 2 if self.mode == 'hybrid' else 4  # Downsample factor
+        self.vgg_perceptual_loss = utils.losses.VGGPerceptualLoss(resize=True).cuda()
 
         # create model
         self.G = models.Generator(**config).cuda()
@@ -129,7 +130,7 @@ class DGP(object):
         loss_dict = {}
         curr_step = 0
         count = 0
-        vgg_perceptual_loss = utils.losses.VGGPerceptualLoss(resize=True).cuda()
+        
         for stage, iteration in enumerate(self.iterations):
             # setup the number of features to use in discriminator
             self.criterion.set_ftr_num(self.ftr_num[stage])
@@ -158,7 +159,7 @@ class DGP(object):
                 edge_c = edge_c.cuda() # .cuda() should be added
 
                 # VGGPerceptualLoss
-                perceptual_edge_loss = vgg_perceptual_loss.forward(img_x, edge_c) # Perceptual Loss (by Haneol Lee)
+                perceptual_edge_loss = self.vgg_perceptual_loss.forward(img_x, edge_c) # Perceptual Loss (by Haneol Lee)
                 
                 # calculate losses in the degradation space
                 ftr_loss = self.criterion(self.ftr_net, x_map, self.target)
@@ -184,7 +185,7 @@ class DGP(object):
                     'nll': nll,
                     'mse_loss': mse_loss / 4,
                     'l1_loss': l1_loss / 2,
-                    'perceptual_edge_loss' : perceptual_edge_loss # Lee
+                    'perceptual_edge_loss' : perceptual_edge_loss * self.config['w_perceptual_edge'] # Lee
                 }
 
                 # calculate losses in the non-degradation space

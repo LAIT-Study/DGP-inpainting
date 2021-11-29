@@ -117,7 +117,7 @@ def prepare_parser():
         help='Postprocessing... '
              '(default: %(default)s)')
     parser.add_argument(
-        '--w_perceptual_edge', default=0.0000001, # Lee
+        '--w_perceptual_edge', default=0.01, # Lee
         help='weight of perceptual_edge_loss' 
              '(default: %(default)s)')
     ### Optimizer stuff ###

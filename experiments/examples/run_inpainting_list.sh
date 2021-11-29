@@ -16,7 +16,7 @@ CUDA_VISIBLE_DEVICES=0,1,2 python -u -W ignore main.py \
 --w_D_loss 1 1 1 1 0.5 \
 --w_nll 0.02 \
 --w_mse 1 1 1 1 10 \
---select_num 1000 \
+--select_num 100 \
 --sample_std 0.3 \
 --iterations 200 200 200 200 200 \
 --G_lrs 5e-5 5e-5 2e-5 2e-5 1e-5 \
