@@ -61,13 +61,15 @@ class ImageDataset(data.Dataset):
                     utils.CenterCropLongEdge(),
                     transforms.Resize(image_size, interpolation=0),
                     transforms.ToTensor(),
-                    transforms.Grayscale(1)
+                    transforms.Normalize(norm_mean, norm_std)
+                    
                 ])
             else:
                 self.transform = transforms.Compose([
                     utils.CenterCropLongEdge(),
                     transforms.Resize(image_size, interpolation=0),
                     transforms.ToTensor()
+                    
                 ])
         with open(meta_file) as f:
             lines = f.readlines()
@@ -89,7 +91,7 @@ class ImageDataset(data.Dataset):
     def __getitem__(self, idx):
         filename = self.root_dir + '/'+ 'image' + '/' +  self.metas[idx][0] + '.png'
         mask_filename = self.root_dir + '/' + 'mask' + '/' + self.metas[idx][0] + '.png'
-        sobel_filename = self.root_dir + '/' + '1_edges_sobel' + '/' + self.metas[idx][0] + '_merged' + '.png'
+        sobel_filename = self.root_dir + '/' + '3_inpainted_outputs' + '/' + self.metas[idx][0] + '_merged' + '.png'
 
         cls = self.metas[idx][1]
         img = default_loader(filename)

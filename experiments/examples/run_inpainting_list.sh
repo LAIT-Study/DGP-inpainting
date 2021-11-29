@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=7 python -u -W ignore main.py \
 --w_mse 1 1 1 1 10 \
 --select_num 1000 \
 --sample_std 0.3 \
---iterations 1000 500 700 1000 1000 \
+--iterations 200 200 200 200 200 \
 --G_lrs 5e-5 5e-5 2e-5 2e-5 1e-5 \
 --z_lrs 2e-3 1e-3 2e-5 2e-5 1e-5 \
 --use_in False False False False False \
