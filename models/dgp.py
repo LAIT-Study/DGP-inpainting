@@ -171,7 +171,7 @@ class DGP(object):
                 loss = ftr_loss * self.config['w_D_loss'][stage] + \
                     mse_loss * self.config['w_mse'][stage] + \
                     nll * self.config['w_nll'] + \
-                    perceptual_edge_loss * self.config['w_perceptual_edge'] * 0.0001
+                    perceptual_edge_loss * self.config['w_perceptual_edge']
                 loss.backward()
 
                 self.z_optim.step()
@@ -185,7 +185,7 @@ class DGP(object):
                     'nll': nll,
                     'mse_loss': mse_loss / 4,
                     'l1_loss': l1_loss / 2,
-                    'perceptual_edge_loss' : perceptual_edge_loss * self.config['w_perceptual_edge'] * 0.0001 # Lee
+                    'perceptual_edge_loss' : perceptual_edge_loss * self.config['w_perceptual_edge'] # Lee
                 }
 
                 # calculate losses in the non-degradation space
