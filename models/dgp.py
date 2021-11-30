@@ -3,17 +3,20 @@ from copy import deepcopy
 
 import numpy as np
 import torch
+from torch._C import device
 import torch.distributed as dist
 import torch.nn.functional as F
 import torchvision
 from PIL import Image
 from skimage import color
-from skimage.measure import compare_psnr, compare_ssim
+
 from torch.autograd import Variable
 
 import models
 import utils
 from models.downsampler import Downsampler
+from models.edge import *
+from skimage.measure import compare_psnr, compare_ssim
 
 
 class DGP(object):
@@ -36,6 +39,7 @@ class DGP(object):
         self.use_in = config['use_in']
         self.select_num = config['select_num']
         self.factor = 2 if self.mode == 'hybrid' else 4  # Downsample factor
+        self.vgg_perceptual_loss = utils.losses.VGGPerceptualLoss(resize=True).cuda()
 
         # create model
         self.G = models.Generator(**config).cuda()
@@ -112,13 +116,30 @@ class DGP(object):
     def random_G(self):
         self.G.init_weights()
 
-    def set_target(self, target, category, img_path, img_mask):
+    def set_target(self, target, category, img_path, img_mask, sobel_img):
         self.target_origin = target
         # apply degradation transform to the original image
         self.target = self.pre_process(target, True, img_mask)
         self.y.fill_(category.item())
-        self.img_name = img_path[img_path.rfind('/') + 1:img_path.rfind('.')]
+        #self.img_name = img_path[img_path.rfind('/') + 1:img_path.rfind('.')]
+        self.img_name = img_path
         self.img_mask = img_mask
+        self.sobel_img = sobel_img
+        print('The process is ', self.img_name, '...')
+
+    def compare_psnr_ssim(self, x, sobel):
+        with torch.no_grad():
+            # transfer to numpy array and scale to [0, 1]
+            target_np = (sobel.detach().cpu().numpy()[0] + 1) / 2
+            x_np = (x.detach().cpu().numpy()[0] + 1) / 2
+            target_np = np.transpose(target_np, (1, 2, 0))
+            x_np = np.transpose(x_np, (1, 2, 0))
+            ssim = compare_ssim(target_np, x_np, multichannel=True)
+            psnr = compare_psnr(target_np, x_np)
+            
+            psnr = torch.Tensor([psnr]).cuda()
+            ssim = torch.Tensor([ssim]).cuda()
+        return psnr, ssim
 
     def run(self, save_interval=None):
         save_imgs = self.target.clone()
@@ -126,6 +147,7 @@ class DGP(object):
         loss_dict = {}
         curr_step = 0
         count = 0
+        
         for stage, iteration in enumerate(self.iterations):
             # setup the number of features to use in discriminator
             self.criterion.set_ftr_num(self.ftr_num[stage])
@@ -137,6 +159,7 @@ class DGP(object):
                                         self.ft_num[stage], self.lr_ratio[stage])
                 self.z_scheduler.update(curr_step, self.z_lrs[stage])
 
+
                 self.z_optim.zero_grad()
                 if self.update_G:
                     self.G.optim.zero_grad()
@@ -144,6 +167,18 @@ class DGP(object):
                 # apply degradation transform
                 x_map = self.pre_process(x, False, self.img_mask)
 
+                # x_numpy = x.detach().cpu().numpy() #$ Lee
+
+                # return image_x, 
+                img_x = sobel_filter(x, 'dgp_sobel')
+                edge_c = sobel_filter(self.sobel_img, 'edge_connect_sobel')
+
+                img_x = img_x.cuda() # .cuda() should be added 
+                edge_c = edge_c.cuda() # .cuda() should be added
+
+                # VGGPerceptualLoss
+                perceptual_edge_loss = self.vgg_perceptual_loss.forward(img_x, edge_c) # Perceptual Loss (by Haneol Lee)
+                
                 # calculate losses in the degradation space
                 ftr_loss = self.criterion(self.ftr_net, x_map, self.target)
                 mse_loss = self.mse(x_map, self.target)
@@ -151,22 +186,31 @@ class DGP(object):
                 nll = self.z**2 / 2
                 nll = nll.mean()
                 l1_loss = F.l1_loss(x_map, self.target)
+
+                w_perceptual_edge = self.config['w_perceptual_edge'][stage]
+
                 loss = ftr_loss * self.config['w_D_loss'][stage] + \
                     mse_loss * self.config['w_mse'][stage] + \
-                    nll * self.config['w_nll']
+                    nll * self.config['w_nll'] + \
+                    perceptual_edge_loss * w_perceptual_edge #  * self.config['w_perceptual_edge'][stage]
+
                 loss.backward()
 
                 self.z_optim.step()
                 if self.update_G:
                     self.G.optim.step()
 
+                psnr, ssim = self.compare_psnr_ssim(x, self.sobel_img)
                 # These losses are calculated in the [-1,1] image scale
                 # We record the rescaled MSE and L1 loss, corresponding to [0,1] image scale
                 loss_dict = {
                     'ftr_loss': ftr_loss,
                     'nll': nll,
                     'mse_loss': mse_loss / 4,
-                    'l1_loss': l1_loss / 2
+                    'l1_loss': l1_loss / 2,
+                    'perceptual_edge_loss' : perceptual_edge_loss * w_perceptual_edge, # Lee,
+                    'psnr' : psnr,
+                    'ssim' : ssim
                 }
 
                 # calculate losses in the non-degradation space
@@ -174,6 +218,7 @@ class DGP(object):
                     # x2 is to get the post-processed result in colorization
                     
                     # get Metrics return 수정 
+                    
                     x2 = self.get_metrics(x)
                     loss_dict = {**loss_dict}
 
@@ -184,12 +229,22 @@ class DGP(object):
                             ['Iter: [{0}/{1}]'.format(i + 1, iteration)] +
                             ['%s : %+4.4f' % (key, loss_dict[key]) for key in loss_dict]
                         ))
+                        # writing log
+                        f = open('%s/log_train.txt' %
+                        self.config['exp_path'], 'a')
+                        f.write(', '.join(
+                            ['{0} : Stage: [{1}/{2}]'.format(self.img_name, stage + 1, len(self.iterations))] +
+                            ['Iter: [{0}/{1}]'.format(i + 1, iteration)] +
+                            ['%s : %+4.4f' % (key, loss_dict[key]) for key in loss_dict]
+                        ) + '\n')
+                        f.close()
+                        
                     # save image sheet of the reconstruction process
                     save_imgs = torch.cat((save_imgs, x), dim=0)
                     torchvision.utils.save_image(
                         save_imgs.float(),
                         '%s/images_sheet/%s_%s.jpg' %
-                        (self.config['exp_path'], self.img_name, self.mode),
+                        (self.config['exp_path'], self.img_name,  self.mode),
                         nrow=int(save_imgs.size(0)**0.5), normalize=True)
                     if self.mode == 'colorization':
                         save_imgs2 = torch.cat((save_imgs2, x2), dim=0)
@@ -211,11 +266,30 @@ class DGP(object):
                             save_path, '%s_%03d.jpg' % (self.img_name, count))
                         utils.save_img(x[0], img_path)
 
+                        img_name_coda = self.img_name.split('_')[1]
+                if i == 200 or i == 500 or i == 1000 or i == 1500:  
+                    # save images
+                    utils.save_img(
+                        self.target[0], '%s/images/%s_%s_%s_target.png' %
+                        (self.config['exp_path'], i, self.img_name, self.mode))
+                    utils.save_img(
+                        self.target_origin[0],
+                        '%s/images/%s_%s_%s_target_origin.png' %
+                        (self.config['exp_path'], i, self.img_name, self.mode))
+                    img_name_coda = self.img_name.split('_')[1]
+                    utils.save_img(
+                        x[0], '%s/images/%s_result_%s.png' %
+                        (self.config['exp_path'], i, img_name_coda))
+                    if self.mode == 'colorization':
+                        utils.save_img(
+                            x2[0], '%s/images/%s_%s_%s2.png' %
+                            (self.config['exp_path'], i, self.img_name, self.mode))
+
                 # stop the reconstruction if the loss reaches a threshold
                 if mse_loss.item() < self.config['stop_mse'] or ftr_loss.item(
                 ) < self.config['stop_ftr']:
                     break
-
+        img_name_coda = self.img_name.split('_')[1]
         # save images
         utils.save_img(
             self.target[0], '%s/images/%s_%s_target.png' %
@@ -225,8 +299,8 @@ class DGP(object):
             '%s/images/%s_%s_target_origin.png' %
             (self.config['exp_path'], self.img_name, self.mode))
         utils.save_img(
-            x[0], '%s/images/%s_%s.png' %
-            (self.config['exp_path'], self.img_name, self.mode))
+            x[0], '%s/images/result_%s.png' %
+            (self.config['exp_path'], img_name_coda))
         if self.mode == 'colorization':
             utils.save_img(
                 x2[0], '%s/images/%s_%s2.png' %
@@ -314,6 +388,9 @@ class DGP(object):
             image = image * mask'''
             image = mask_img * image
         return image
+
+    
+
 
     def get_metrics(self, x):
         with torch.no_grad():

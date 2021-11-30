@@ -107,12 +107,15 @@ def prepare_parser():
         help='Init style to use for G (default: %(default)s)')
     parser.add_argument(
         '--D_init', type=str, default='ortho',
-        help='Init style to use for D(default: %(default)s)')
+        help='Init style to use for D (default: %(default)s)')
     parser.add_argument(
         '--skip_init', action='store_true', default=False,
         help='Skip initialization, ideal for testing when ortho init was used '
              '(default: %(default)s)')
-    
+    parser.add_argument(
+        '--postprocessing', action='store_true', default=False,
+        help='Postprocessing... '
+             '(default: %(default)s)')
     ### Optimizer stuff ###
     parser.add_argument(
         '--optimizer', type=str, default='Adam',

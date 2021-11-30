@@ -8,3 +8,4 @@ logs*
 event*
 *.npy
 *.pth
+DGM3_results.zip
