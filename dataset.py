@@ -110,5 +110,4 @@ class ImageDataset(data.Dataset):
             img = self.transform(img)
             mask_img = self.mask_transform(mask_img)
             sobel_img = self.sobel_transform(sobel_img)
-
         return img, cls, self.metas[idx][0], mask_img, sobel_img

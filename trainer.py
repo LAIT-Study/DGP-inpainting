@@ -95,6 +95,7 @@ class Trainer(object):
             image = image.cuda()
             category = category.cuda()
             img_path = img_path[0]
+
             
             img_mask = img_mask.cuda()
             img_mask = 1 - img_mask
@@ -117,6 +118,7 @@ class Trainer(object):
                     loss_dict[k] = reduced
 
             if len(recorder) == 0:
+                print(loss_dict)
                 for k in loss_dict.keys():
                     recorder[k] = utils.AverageMeter()
             for k in loss_dict.keys():
