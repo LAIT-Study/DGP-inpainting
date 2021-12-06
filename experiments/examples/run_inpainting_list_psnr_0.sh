@@ -2,10 +2,10 @@
 
 WORK_PATH=$(dirname $0)
 
-CUDA_VISIBLE_DEVICES=2 python -u -W ignore main.py \
---exp_path $WORK_PATH/CF_100_1234 \
+CUDA_VISIBLE_DEVICES=0 python -u -W ignore main.py \
+--exp_path $WORK_PATH/MC_0_psnr_211207 \
 --root_dir data/others \
---list_file data/others/list_100.txt \
+--list_file data/others/list_psnr.txt \
 --seed 2 \
 --dgp_mode inpainting \
 --update_G \
@@ -19,7 +19,7 @@ CUDA_VISIBLE_DEVICES=2 python -u -W ignore main.py \
 --w_perceptual_edge 0 0 0.01 0.001 0.0001 \
 --select_num 1000 \
 --sample_std 0.3 \
---iterations 200 200 200 200 200 \
+--iterations 2000 2000 2000 2000 2000 \
 --G_lrs 5e-5 5e-5 2e-5 2e-5 1e-5 \
 --z_lrs 2e-3 1e-3 2e-5 2e-5 1e-5 \
 --use_in False False False False False \

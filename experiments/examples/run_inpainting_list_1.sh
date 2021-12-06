@@ -3,9 +3,9 @@
 WORK_PATH=$(dirname $0)
 
 CUDA_VISIBLE_DEVICES=1 python -u -W ignore main.py \
---exp_path $WORK_PATH/CF_01_4e-1_5e-2 \
+--exp_path $WORK_PATH/CF_50_1234 \
 --root_dir data/others \
---list_file data/others/list.txt \
+--list_file data/others/list_50.txt \
 --seed 2 \
 --dgp_mode inpainting \
 --update_G \
@@ -16,10 +16,10 @@ CUDA_VISIBLE_DEVICES=1 python -u -W ignore main.py \
 --w_D_loss 1 1 1 1 0.5 \
 --w_nll 0.02 \
 --w_mse 1 1 1 1 10 \
---w_perceptual_edge 0 0 0 0.1 0.01 \
+--w_perceptual_edge 0 0 0.01 0.001 0.0001 \
 --select_num 1000 \
 --sample_std 0.3 \
---iterations 2000 2000 2000 2000 2000 \
+--iterations 200 200 200 200 200 \
 --G_lrs 5e-5 5e-5 2e-5 2e-5 1e-5 \
 --z_lrs 2e-3 1e-3 2e-5 2e-5 1e-5 \
 --use_in False False False False False \

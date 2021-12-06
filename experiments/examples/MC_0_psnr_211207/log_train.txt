@@ -1,0 +1,1 @@
+images_301 : Stage: [1/5], Iter: [1/2000], ftr_loss : +4.5900, nll : +0.0444, mse_loss : +0.0999, l1_loss : +0.2347, perceptual_edge_loss : +0.0000, psnr : +9.5892, ssim : +0.3205
