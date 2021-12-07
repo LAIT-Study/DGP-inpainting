@@ -38,12 +38,27 @@ class DGP(object):
         self.use_in = config['use_in']
         self.select_num = config['select_num']
         self.factor = 2 if self.mode == 'hybrid' else 4  # Downsample factor
+        self.setting = config['setting']
 
         # create model
-        self.G = models.Generator(**config).cuda()
-        self.D = models.Discriminator(
-            **config).cuda() if config['ftr_type'] == 'Discriminator' else None
-        self.G.optim = torch.optim.Adam(
+        #self.G = models.Generator(**config).cuda()
+        #self.D = models.Discriminator(
+        #    **config).cuda() if config['ftr_type'] == 'Discriminator' else None
+
+        self.G = models.Generator(in_channel=512, input_code_dim=100, pixel_norm=True, tanh=True).cuda()
+        self.D = models.Discriminator(feat_dim=512).cuda() if config['ftr_type'] == 'Discriminator' else None
+        
+
+        if self.setting == 'pggan':
+            self.G.optim = torch.optim.Adam(
+            [{'params': self.G.get_params(i, self.update_embed)}
+                for i in range(len(self.G.progression) + 1)],
+            lr=config['G_lr'],
+            betas=(config['G_B1'], config['G_B2']),
+            weight_decay=0,
+            eps=1e-8)
+        else:
+            self.G.optim = torch.optim.Adam(
             [{'params': self.G.get_params(i, self.update_embed)}
                 for i in range(len(self.G.blocks) + 1)],
             lr=config['G_lr'],
@@ -51,16 +66,17 @@ class DGP(object):
             weight_decay=0,
             eps=1e-8)
 
+
         # load weights
         if config['random_G']:
             self.random_G()
         else:
             utils.load_weights(
-                self.G if not (config['use_ema']) else None,
+                self.G,
                 self.D,
                 config['weights_root'],
                 name_suffix=config['load_weights'],
-                G_ema=self.G if config['use_ema'] else None,
+                G_ema=self.G,
                 strict=False)
 
         self.G.eval()
@@ -69,7 +85,7 @@ class DGP(object):
         self.G_weight = deepcopy(self.G.state_dict())
 
         # prepare latent variable and optimizer
-        self._prepare_latent()
+        self._prepare_latent_pggan()
         # prepare learning rate scheduler
         self.G_scheduler = utils.LRScheduler(self.G.optim, config['warm_up'])
         self.z_scheduler = utils.LRScheduler(self.z_optim, config['warm_up'])
@@ -103,9 +119,21 @@ class DGP(object):
         )
         self.y = torch.zeros(1).long().cuda()
 
+    def _prepare_latent_pggan(self):
+        self.z = torch.zeros((1, self.G.input_dim)).normal_().cuda()
+        self.z = Variable(self.z, requires_grad=True)
+        self.z_optim = torch.optim.Adam(
+            [{'params': self.z, 'lr': self.z_lrs[0]}],
+            betas=(0., 0.99),
+            weight_decay=0,
+            eps=1e-8
+        )
+        self.y = torch.zeros(1).long().cuda()
+
     def reset_G(self):
         self.G.load_state_dict(self.G_weight, strict=False)
-        self.G.reset_in_init()
+        #self.G.reset_in_init()
+        self.G.zero_grad()
         if self.config['random_G']:
             self.G.train()
         else:
@@ -128,6 +156,7 @@ class DGP(object):
         loss_dict = {}
         curr_step = 0
         count = 0
+        print(self.ftr_num)
         for stage, iteration in enumerate(self.iterations):
             # setup the number of features to use in discriminator
             self.criterion.set_ftr_num(self.ftr_num[stage])
@@ -142,7 +171,8 @@ class DGP(object):
                 self.z_optim.zero_grad()
                 if self.update_G:
                     self.G.optim.zero_grad()
-                x = self.G(self.z, self.G.shared(self.y), use_in=self.use_in[stage])
+                #x = self.G(self.z, self.G.shared(self.y), use_in=self.use_in[stage])
+                x = self.G(self.z, step=6)
                 # apply degradation transform
                 x_map = self.pre_process(x, False, self.img_mask)
 
@@ -265,7 +295,9 @@ class DGP(object):
                 if select_y:
                     self.y.random_(0, self.config['n_classes'])
                     y_all.append(self.y.cpu())
-                x = self.G(self.z, self.G.shared(self.y))
+                #x = self.G(self.z, self.G.shared(self.y))
+                x = self.G(self.z, step=self.G.max_step)
+                
                 x = self.pre_process(x, mask_img = img_mask)
                 ftr_loss = self.criterion(self.ftr_net, x, self.target)
                 loss_all.append(ftr_loss.view(1).cpu())
@@ -276,6 +308,7 @@ class DGP(object):
             self.z.copy_(z_all[idx])
             if select_y:
                 self.y.copy_(y_all[idx])
+
             self.criterion.set_ftr_num(self.ftr_num[0])
 
     def pre_process(self, image, target=True, mask_img = None):
@@ -297,6 +330,7 @@ class DGP(object):
             # interpolate to the orginal resolution via bilinear interpolation
             image = F.interpolate(
                 image, scale_factor=self.factor, mode='nearest')
+        
         n, _, h, w = image.size()
         if self.mode in ['colorization', 'hybrid']:
             # transform the image to gray-scale

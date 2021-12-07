@@ -8,7 +8,7 @@ from PIL import Image
 
 import dataset
 
-from .biggan_utils import CenterCropLongEdge
+from .pggan_utils import CenterCropLongEdge
 
 
 # Arguments for DGP
@@ -100,7 +100,10 @@ def add_dgp_parser(parser):
         help='MSE threshold for stopping training (default: %(default)s)')
     parser.add_argument(
         '--stop_ftr', type=float, default=0.0,
-        help='Feature loss threshold for stopping training (default: %(default)s)')
+        help='Feature loss threshold for stopping training (default: %(default)s)'),
+    parser.add_argument(
+        '--setting', type=str, default='pggan',
+        help='Selecting pretrained model (default: %(default)s)')
     return parser
 
 

@@ -354,10 +354,10 @@ def load_weights(G,
         print('Loading ema generator...')
         G_ema.load_state_dict(
             torch.load(
-                '%s/%s.pth' %
-                (weights_root, join_strings('_', ['G_ema', name_suffix])),
+                'pretrained/celeba_weight.pth',
                 map_location=map_func),
             strict=strict)
+        print('Loading Celeb Generator...')
 
 
 # Get singular values to log. This will use the state dict to find them

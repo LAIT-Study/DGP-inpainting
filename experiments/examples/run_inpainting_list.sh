@@ -2,7 +2,7 @@
 
 WORK_PATH=$(dirname $0)
 
-CUDA_VISIBLE_DEVICES=7 python -u -W ignore main.py \
+CUDA_VISIBLE_DEVICES=9 python -u -W ignore main.py \
 --exp_path $WORK_PATH \
 --root_dir data/others \
 --list_file data/others/list.txt \
@@ -29,3 +29,4 @@ CUDA_VISIBLE_DEVICES=7 python -u -W ignore main.py \
 --G_shared \
 --hier --dim_z 120 --shared_dim 128 \
 --skip_init --use_ema --no_tb
+--setting pggan

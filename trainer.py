@@ -93,12 +93,16 @@ class Trainer(object):
             torch.cuda.empty_cache()
 
             image = image.cuda()
+            
             category = category.cuda()
             img_path = img_path[0]
             
             img_mask = img_mask.cuda()
             img_mask = 1 - img_mask
             self.model.reset_G()
+            
+
+
             self.model.set_target(image, category, img_path, img_mask)
             # when category is unkonwn (category=-1), it would be selected from samples
             self.model.select_z(select_y=True if category.item() < 0 else False,  img_mask=img_mask)

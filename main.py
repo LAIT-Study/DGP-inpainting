@@ -10,7 +10,7 @@ def main():
     parser = utils.prepare_parser()
     parser = utils.add_dgp_parser(parser)
     config = vars(parser.parse_args())
-    utils.dgp_update_config(config)
+    #utils.dgp_update_config(config)
     print(config)
 
     rank = 0
