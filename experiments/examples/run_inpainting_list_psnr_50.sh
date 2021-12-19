@@ -2,10 +2,10 @@
 
 WORK_PATH=$(dirname $0)
 
-CUDA_VISIBLE_DEVICES=1 python -u -W ignore main.py \
---exp_path $WORK_PATH/EC_0_psnr \
+CUDA_VISIBLE_DEVICES=2 python -u -W ignore main.py \
+--exp_path $WORK_PATH/EC_50_psnr \
 --root_dir data/others \
---list_file data/others/list_0.txt \
+--list_file data/others/list_50.txt \
 --seed 2 \
 --dgp_mode inpainting \
 --update_G \
